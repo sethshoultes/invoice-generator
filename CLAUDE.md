@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## AI-Agent Memory System
+
+**Every session, start by reading these files in order:**
+1. `/STATUS.md` - Current state, task, blockers (WHERE are we?)
+2. `/ROADMAP.md` - Milestone checklists (WHAT's next?)
+3. `/DECISIONS.md` - Decision history (WHY are things this way?)
+4. `/JOURNAL.md` - Learnings and patterns (HOW did we solve problems?)
+
+**During work:**
+- Update STATUS.md with progress
+- Mark ROADMAP.md items complete when done
+- Document significant decisions in DECISIONS.md
+- Capture learnings in JOURNAL.md
+
+**At session end:**
+- Update STATUS.md with current state and next steps
+- Commit memory files with code changes
+
+---
+
 ## Project Overview
 
 A browser-based invoice generator that extracts line items from bank/payment statements using Claude's vision API, then generates PDF invoices. The application is a single-page React app that runs entirely in the browser.
@@ -86,3 +108,48 @@ tool_choice: { type: 'tool', name: 'record_invoice_items' }
 ## Default Company Info
 
 Invoice templates are pre-filled with SWS Management Services contact information. Modify `invoiceData` state defaults in the component to change.
+
+## Decision Authority Levels
+
+**✅ Tier 1: Implement Autonomously**
+- Bug fixes in existing code
+- UI/UX improvements within existing patterns
+- Code refactoring (following existing patterns)
+- Documentation updates
+- Adding new line item fields
+
+**⚠️ Tier 2: Propose First**
+- New features (discuss approach first)
+- API changes (new Claude API usage)
+- New dependencies (CDN libraries)
+- Storage changes (new localStorage keys)
+- Major UI redesigns
+
+**🛑 Tier 3: Always Ask**
+- Architecture changes (e.g., adding backend)
+- Security-related changes
+- Breaking changes to invoice format
+- Removing existing features
+
+## Code Standards
+
+**This is a single-file browser app:**
+- All React code is in `invoice-generator.html`
+- Use React hooks (useState, useEffect, useRef)
+- Tailwind CSS for styling
+- Inline styles for PDF-critical elements
+- No build step required
+
+**Patterns to follow:**
+- State management via useState hooks
+- localStorage for persistence (obfuscate sensitive data)
+- Tool use for Claude API structured output
+- html2pdf.js for PDF generation
+
+## Key Files to Reference
+
+- `/STATUS.md` - Current state (read every session)
+- `/ROADMAP.md` - What's next
+- `/DECISIONS.md` - Why we chose X over Y
+- `/JOURNAL.md` - Learnings and patterns
+- `/README.md` - User documentation
