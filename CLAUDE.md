@@ -32,6 +32,14 @@ A browser-based invoice generator that extracts line items from bank/payment sta
 - **PDF generation** - html2pdf.js renders the DOM preview to PDF client-side
 - **Styling** - Tailwind CSS via CDN, inline styles for PDF-rendered elements
 
+## Features
+
+- **Multi-PDF Upload**: Process multiple bank statements, items are appended
+- **API Key Persistence**: Stored obfuscated in localStorage, auto-loads on return
+- **Saved Client Profiles**: Save/select/delete clients from dropdown
+- **Date Pickers**: Native date inputs for all date fields
+- **Auto Invoice Numbers**: Generated as MMDDYYYY-1 format
+
 ## Running Locally
 
 Open `invoice-generator.html` directly in a browser. No build step required.
@@ -69,6 +77,11 @@ tools: [{
 }],
 tool_choice: { type: 'tool', name: 'record_invoice_items' }
 ```
+
+## localStorage Keys
+
+- `anthropic_api_key` - Obfuscated API key (base64 + reversed)
+- `saved_clients` - JSON array of saved client profiles
 
 ## Default Company Info
 
