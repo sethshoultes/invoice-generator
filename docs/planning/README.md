@@ -29,4 +29,5 @@ docs/
 
 | Feature | Doc | Priority |
 |---------|-----|----------|
+| Google Drive Sync | [future-google-drive-sync.md](./future-google-drive-sync.md) | Medium |
 | Email Delivery | [future-email-delivery.md](./future-email-delivery.md) | Low |
