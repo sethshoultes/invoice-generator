@@ -37,24 +37,60 @@
 - ✅ Master checklist created (8 phases, ~200 tasks)
 - ✅ Decision 007 documented (architecture shift rationale)
 - ✅ CLAUDE.md updated with V2 architecture and code standards
-- ⏳ Ready to begin Phase 1: Project Setup
+- ✅ **Phase 1: Project Setup - 90% Complete**
+  - ✅ Firebase CLI installed (v14.26.0)
+  - ✅ Directory structure created (`service/functions`, `service/frontend`)
+  - ✅ TypeScript configured (backend + frontend)
+  - ✅ ESLint + Prettier configured
+  - ✅ Firebase config files created (firebase.json, firestore.rules, storage.rules)
+  - ✅ Initial TypeScript types created
+  - ✅ Utility files and constants defined
+  - ✅ Hello-world function created
+  - ✅ Basic React app scaffolded
+  - ⏳ **USER ACTION REQUIRED:** Create Firebase project in Google Cloud Console
+  - ⏳ Install npm dependencies
+  - ⏳ Connect to Firebase (`firebase init`)
+  - ⏳ Store Anthropic API key in Secret Manager
+  - ⏳ Deploy hello-world function
 
 ## Current Blockers
 
-None - planning phase complete, ready to implement.
+**Phase 1 - Waiting on User:**
+You need to create a Firebase project in Google Cloud Console before we can proceed.
+
+**See:** `service/SETUP.md` for detailed step-by-step instructions.
 
 ## Next Steps (Immediate)
 
-**Phase 1: Project Setup & Infrastructure**
-1. Create Firebase project in Google Cloud Console
-2. Install Firebase CLI and initialize project
-3. Set up directory structure (`service/functions`, `service/frontend`)
-4. Configure TypeScript for backend and frontend
-5. Store Anthropic API key in Secret Manager
-6. Set up ESLint + Prettier
-7. Deploy hello-world function to verify setup
+**Complete Phase 1 (User Action Required):**
 
-**Phase 2-8:** See ROADMAP.md → Milestone 2 for complete checklist
+1. **Create Firebase Project** (15 minutes)
+   - Go to https://console.firebase.google.com/
+   - Create new project: `invoice-digitization-service`
+   - Enable: Authentication (Email/Password), Firestore, Storage, Functions
+   - Upgrade to Blaze plan (required for Cloud Functions, generous free tier)
+
+2. **Install Dependencies & Connect** (5 minutes)
+   ```bash
+   cd service/functions && npm install
+   cd ../frontend && npm install
+   cd .. && firebase login && firebase init
+   ```
+
+3. **Store API Key & Deploy** (5 minutes)
+   ```bash
+   firebase functions:secrets:set ANTHROPIC_API_KEY
+   cd functions && npm run build && cd ..
+   firebase deploy --only functions
+   ```
+
+4. **Test Deployment**
+   - Visit the helloWorld function URL
+   - Should see JSON response confirming deployment
+
+**Full instructions:** See `service/SETUP.md`
+
+**Once Phase 1 is complete, we'll move to Phase 2: Backend - Cloud Functions Setup**
 
 ## Development Principles
 
