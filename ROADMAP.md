@@ -68,6 +68,55 @@
 
 ---
 
+## Milestone 3: WordPress Integration with Cloud Service (Planning Complete)
+
+**Goal:** WordPress plugin that integrates with Firebase cloud service and uses MemberPress for membership management
+
+**Status:** ✅ Planning Complete - Ready for implementation
+
+### Architecture
+- WordPress plugin provides frontend interface (`[invoice_generator]` shortcode)
+- MemberPress handles authentication and membership tiers (Free, Pro, Business)
+- Firebase backend handles Claude API calls and data storage
+- WordPress ↔ Firebase communication via REST API
+
+### Features
+- [ ] WordPress plugin core (admin settings, API client)
+- [ ] MemberPress integration (usage tracking, tier checks)
+- [ ] Frontend interface (shortcode, file upload, invoice generation)
+- [ ] Invoice history management (`[invoice_history]` shortcode)
+- [ ] Admin dashboard (analytics, monitoring)
+- [ ] Firebase API endpoints (extract, usage, invoices, clients)
+- [ ] Security hardening and testing
+- [ ] Production deployment
+
+### Implementation Phases (8 phases, ~4 weeks)
+- [ ] Phase 1: Firebase API enhancements (WordPress-specific endpoints)
+- [ ] Phase 2: WordPress plugin core (settings, API client)
+- [ ] Phase 3: MemberPress integration (usage tracking, limits)
+- [ ] Phase 4: Frontend interface (shortcode, React components)
+- [ ] Phase 5: Invoice history & management
+- [ ] Phase 6: Admin dashboard & analytics
+- [ ] Phase 7: Testing & security hardening
+- [ ] Phase 8: Deployment & launch
+
+### Documentation
+- [x] WordPress Integration Plan (WORDPRESS-INTEGRATION-PLAN.md)
+- [ ] Plugin setup guide (for site admins)
+- [ ] User guide (for end users)
+- [ ] API documentation (WordPress ↔ Firebase)
+
+### Prerequisites
+- [x] Milestone 1 complete ✅
+- [ ] Firebase cloud service deployed (from `claude/invoice-digitization-service-01Sgz4omcr4jJZPAZkLoSH4E` branch)
+- [ ] MemberPress installed on target WordPress site
+- [ ] Firebase API key available for WordPress plugin
+
+**Planning Completed:** 2025-11-30
+**Target Branch:** `claude/wordpress-cloud-invoice-integration-01QPtGU199TqAm7zbmTN4Mos`
+
+---
+
 ## Milestone 4: Cloud Integration (Future)
 
 **Goal:** Optional cloud storage for invoices and data
@@ -81,7 +130,7 @@
 - [ ] Cloud sync for client profiles
 
 ### Prerequisites
-- [ ] Milestone 2 complete
+- [ ] Milestone 3 complete
 - [ ] OAuth integration for cloud providers
 - [ ] Privacy/security review
 

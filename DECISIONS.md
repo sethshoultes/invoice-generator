@@ -357,3 +357,80 @@ AI-assisted development suffers from session amnesia. Need persistent context sy
 
 **Related:**
 - See docs/AI-AGENT-MEMORY-SYSTEM.md for full documentation
+
+---
+
+## Decision 008: WordPress Integration via MemberPress (Not Custom Auth)
+
+**Date:** 2025-11-30
+**Status:** ✅ Active
+
+**Decision:**
+Integrate with MemberPress for user authentication and membership tier management instead of building a custom membership system into the Firebase cloud service.
+
+**Context:**
+Need to offer invoice digitization service to users through a WordPress site. Must decide how to handle user authentication, membership tiers, and usage limits.
+
+**Alternatives Considered:**
+
+1. **Custom membership system in Firebase** (NOT chosen)
+   - Pros: Full control, unified system
+   - Cons: Duplicate work (reinventing the wheel), no WordPress integration, requires building billing system
+
+2. **WordPress with MemberPress** (chosen)
+   - Pros: Existing membership management, battle-tested billing, WordPress ecosystem
+   - Cons: Two systems to maintain (WordPress + Firebase), API integration required
+
+3. **WordPress with WooCommerce Subscriptions**
+   - Pros: Powerful e-commerce features
+   - Cons: More complex than needed, higher overhead
+
+**Rationale:**
+- User already has MemberPress installed on WordPress site
+- MemberPress handles authentication, membership tiers, billing automatically
+- No need to build payment processing into Firebase
+- WordPress provides familiar interface for users
+- Firebase cloud service focuses on what it does best (invoice processing)
+- Separation of concerns: WordPress = user-facing, Firebase = processing backend
+
+**Tradeoffs:**
+- ❌ Two systems to maintain (WordPress + Firebase)
+- ❌ API integration adds complexity
+- ❌ WordPress must be available for users to access service
+- ✅ No need to build membership/billing system
+- ✅ Leverage existing MemberPress installation
+- ✅ Familiar WordPress interface for users
+- ✅ Firebase focuses solely on invoice processing
+
+**Implementation Details:**
+
+**Architecture:**
+```
+WordPress + MemberPress (User Management)
+         ↓ REST API
+Firebase Cloud Functions (Invoice Processing)
+         ↓
+Claude API + Firestore + Storage
+```
+
+**Membership Tiers (configured in MemberPress):**
+- Free: $0/month, 10 extractions/month
+- Pro: $19/month, unlimited extractions
+- Business: $49/month, unlimited + API access
+
+**WordPress Plugin:**
+- Communicates with Firebase via REST API
+- Checks MemberPress membership tier before allowing extraction
+- Tracks usage in Firebase (per user per month)
+- Displays usage meter and upgrade CTAs
+
+**Firebase Cloud Functions:**
+- Accepts WordPress user ID as parameter
+- Validates requests via service account API key
+- Stores data namespaced by user ID in Firestore
+- Returns usage count with each extraction
+
+**Related:**
+- WORDPRESS-INTEGRATION-PLAN.md (full architecture)
+- Firebase cloud service: `claude/invoice-digitization-service-01Sgz4omcr4jJZPAZkLoSH4E`
+- WordPress integration: `claude/wordpress-cloud-invoice-integration-01QPtGU199TqAm7zbmTN4Mos`
