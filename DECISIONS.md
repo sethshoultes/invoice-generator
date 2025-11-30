@@ -357,3 +357,124 @@ AI-assisted development suffers from session amnesia. Need persistent context sy
 
 **Related:**
 - See docs/AI-AGENT-MEMORY-SYSTEM.md for full documentation
+
+---
+
+## Decision 007: Migrate to Hosted Service Architecture
+
+**Date:** 2025-11-30
+**Status:** ✅ Active (IN PROGRESS)
+
+**Decision:**
+Migrate from browser-only architecture to a hosted service on Google Cloud (Firebase) with backend API, authentication, and managed data storage.
+
+**Context:**
+User wants to deploy this as a service for users to upload handwritten invoices and generate digital invoices without requiring them to provide their own Anthropic API keys. This requires a fundamental architecture shift from V1.
+
+**Alternatives Considered:**
+
+1. **Keep browser-only, users provide API keys** (current V1)
+   - Pros: Zero hosting cost, simple, no backend
+   - Cons: Friction for non-technical users, no history/collaboration, no monetization path
+
+2. **Hosted service on Firebase** (chosen)
+   - Pros: Managed infrastructure, quick MVP, generous free tier, scalable
+   - Cons: Hosting costs, more complexity, ongoing maintenance
+
+3. **Traditional server (AWS/GCP Compute)**
+   - Pros: Full control, can optimize costs at scale
+   - Cons: More setup, manage infrastructure, higher initial complexity
+
+4. **Serverless (Vercel/Netlify + Supabase)**
+   - Pros: Modern stack, good DX
+   - Cons: Less integrated than Firebase, more services to manage
+
+**Rationale:**
+- Firebase provides all needed services in one ecosystem
+- Generous free tier allows testing demand before costs
+- Firebase Auth, Firestore, Functions, Hosting all integrated
+- Quick to MVP (2-4 weeks vs 4-8 weeks for custom infrastructure)
+- Aligns with LEAN principle: deploy fast, measure, learn
+- Google Cloud hosting as requested by user
+
+**Tradeoffs:**
+
+**What We Gain:**
+- ✅ Better UX for non-technical users (no API key needed)
+- ✅ Invoice history and retrieval
+- ✅ Multi-device access (cloud-synced)
+- ✅ Usage tracking and analytics
+- ✅ Monetization potential (free tier + paid plans)
+- ✅ Scalability (Firebase auto-scales)
+- ✅ Security (API keys in Secret Manager, not browser)
+
+**What We Lose/Add:**
+- ❌ Hosting costs (~$10-50/month initially)
+- ❌ Increased complexity (frontend + backend + database)
+- ❌ Ongoing maintenance (monitoring, updates, support)
+- ❌ Must manage user data (privacy, backups, GDPR)
+- ⚠️ Need authentication system
+- ⚠️ Need usage limits and tracking
+
+**Architecture Changes:**
+- **Frontend**: React SPA (Vite) deployed to Firebase Hosting
+- **Backend**: Cloud Functions (Node.js/TypeScript) for API
+- **Database**: Firestore for user data, invoices, clients
+- **Storage**: Cloud Storage for uploaded images/PDFs
+- **Auth**: Firebase Authentication (email/password, Google OAuth)
+- **Secrets**: Secret Manager for Anthropic API key
+
+**MVP Scope (Following YAGNI):**
+- Authentication (email/password only)
+- Invoice extraction via Claude API
+- Save/retrieve invoices and clients
+- Usage limits (10 free extractions/month)
+- Basic dashboard
+- PDF generation (still client-side)
+
+**NOT in MVP (defer until proven need):**
+- ❌ Billing/payments (just free tier initially)
+- ❌ Multiple invoice templates
+- ❌ Team collaboration
+- ❌ Email delivery
+- ❌ Advanced analytics
+- ❌ Mobile apps
+
+**Development Principles:**
+This migration follows:
+- **KISS**: Use managed services, simple architecture
+- **YAGNI**: Build only what's needed for MVP
+- **DRY**: Reuse V1 components, share types
+- **PSR**: TypeScript strict mode, ESLint, consistent naming
+- **LEAN**: Deploy fast, measure usage, iterate based on data
+
+**Cost Analysis:**
+**Your Costs (Service Provider):**
+- Firebase free tier: 10K monthly active users, 50K reads, 20K writes
+- Cloud Functions free tier: 2M invocations/month
+- Estimated costs with 100 users, 10 invoices each/month:
+  - Claude API: ~$20 (1000 extractions × $0.02)
+  - Firebase overages: ~$5-10
+  - Total: ~$25-30/month
+
+**Monetization Options (not in MVP):**
+- Free tier: 10 extractions/month
+- Paid tier: $10-20/month unlimited
+- Or: $0.10-0.25 per extraction
+
+**Success Metrics:**
+- [ ] 10+ active users in first month
+- [ ] >50% of users return for 2nd invoice
+- [ ] <1% error rate on extractions
+- [ ] <2s average extraction time
+- [ ] Costs <$50/month initially
+
+**Related:**
+- Decision 001 (browser-only architecture) - superseded for V2
+- ROADMAP.md Milestone 2 (implementation checklist)
+- CLAUDE.md (architecture documentation)
+
+**Notes:**
+- V1 (browser-only) remains available for power users who want to use their own API keys
+- V2 does not replace V1, they coexist for different user segments
+- This is a MAJOR architectural change (Tier 3 decision) approved by user
