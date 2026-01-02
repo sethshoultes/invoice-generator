@@ -64,9 +64,32 @@
         file: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
         chevronLeft: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>,
         chevronRight: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>,
+        history: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+        export: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+        import: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16V10m0 0l3 3m-3-3l-3 3M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+        copy: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>,
+        eye: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>,
+        x: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+        dollarSign: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+        settings: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
       };
       return icons[name] || null;
     };
+
+    // Data version for migrations
+    const DATA_VERSION = 1;
+
+    // localStorage keys
+    const STORAGE_KEYS = {
+      API_KEY: 'anthropic_api_key',
+      CLIENTS: 'saved_clients',
+      INVOICES: 'invoice_history',
+      RECURRING_ITEMS: 'recurring_items',
+      APP_DATA: 'invoice_generator_data'
+    };
+
+    // Generate unique invoice ID
+    const generateId = () => `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     function InvoiceGenerator() {
       const [step, setStep] = useState(1);
@@ -74,11 +97,18 @@
       const [error, setError] = useState(null);
       const [apiKey, setApiKey] = useState('');
       const invoiceRef = useRef(null);
-      
+      const importInputRef = useRef(null);
+
       const [lineItems, setLineItems] = useState([]);
       const [savedClients, setSavedClients] = useState([]);
       const [processedStatements, setProcessedStatements] = useState([]);
       const [currentFileName, setCurrentFileName] = useState('');
+
+      // Invoice history state
+      const [invoiceHistory, setInvoiceHistory] = useState([]);
+      const [showHistory, setShowHistory] = useState(false);
+      const [historySearch, setHistorySearch] = useState('');
+      const [historyFilter, setHistoryFilter] = useState('all'); // all, paid, unpaid
       
       const [invoiceData, setInvoiceData] = useState({
         companyName: 'SWS Management Services',
@@ -122,10 +152,20 @@
       // Load saved clients from localStorage
       useEffect(() => {
         try {
-          const clients = JSON.parse(localStorage.getItem('saved_clients') || '[]');
+          const clients = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLIENTS) || '[]');
           setSavedClients(clients);
         } catch (e) {
           setSavedClients([]);
+        }
+      }, []);
+
+      // Load invoice history from localStorage
+      useEffect(() => {
+        try {
+          const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.INVOICES) || '[]');
+          setInvoiceHistory(history);
+        } catch (e) {
+          setInvoiceHistory([]);
         }
       }, []);
 
@@ -163,14 +203,194 @@
         };
         const updated = [...savedClients, newClient];
         setSavedClients(updated);
-        localStorage.setItem('saved_clients', JSON.stringify(updated));
+        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(updated));
       };
 
       // Delete a saved client
       const deleteClient = (clientId) => {
         const updated = savedClients.filter(c => c.id !== clientId);
         setSavedClients(updated);
-        localStorage.setItem('saved_clients', JSON.stringify(updated));
+        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(updated));
+      };
+
+      // Save invoice to history
+      const saveInvoiceToHistory = (invoiceToSave) => {
+        const invoice = {
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          invoiceNumber: invoiceToSave.invoiceNumber,
+          invoiceFor: invoiceToSave.invoiceFor,
+          clientName: invoiceToSave.clientName,
+          clientCompany: invoiceToSave.clientCompany,
+          clientAddress1: invoiceToSave.clientAddress1,
+          clientAddress2: invoiceToSave.clientAddress2,
+          project: invoiceToSave.project,
+          submittedDate: invoiceToSave.submittedDate,
+          dueDate: invoiceToSave.dueDate,
+          adjustments: invoiceToSave.adjustments,
+          servicesSummary: invoiceToSave.servicesSummary,
+          lineItems: lineItems,
+          subtotal: subtotal,
+          total: total,
+          // Payment tracking
+          paymentStatus: 'unpaid', // unpaid, partial, paid
+          datePaid: null,
+          paymentMethod: null,
+          paymentNotes: ''
+        };
+
+        const updated = [invoice, ...invoiceHistory];
+        setInvoiceHistory(updated);
+        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updated));
+        return invoice;
+      };
+
+      // Update invoice in history
+      const updateInvoiceInHistory = (invoiceId, updates) => {
+        const updated = invoiceHistory.map(inv =>
+          inv.id === invoiceId
+            ? { ...inv, ...updates, updatedAt: new Date().toISOString() }
+            : inv
+        );
+        setInvoiceHistory(updated);
+        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updated));
+      };
+
+      // Delete invoice from history
+      const deleteInvoiceFromHistory = (invoiceId) => {
+        if (!confirm('Delete this invoice from history?')) return;
+        const updated = invoiceHistory.filter(inv => inv.id !== invoiceId);
+        setInvoiceHistory(updated);
+        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updated));
+      };
+
+      // Load invoice from history for viewing/editing
+      const loadInvoiceFromHistory = (invoice) => {
+        setInvoiceData({
+          companyName: invoiceData.companyName,
+          companyAddress1: invoiceData.companyAddress1,
+          companyAddress2: invoiceData.companyAddress2,
+          companyPhone: invoiceData.companyPhone,
+          payableTo: invoiceData.payableTo,
+          invoiceFor: invoice.invoiceFor,
+          clientName: invoice.clientName,
+          clientCompany: invoice.clientCompany,
+          clientAddress1: invoice.clientAddress1,
+          clientAddress2: invoice.clientAddress2,
+          project: invoice.project,
+          invoiceNumber: invoice.invoiceNumber,
+          submittedDate: invoice.submittedDate,
+          dueDate: invoice.dueDate,
+          adjustments: invoice.adjustments,
+          servicesSummary: invoice.servicesSummary
+        });
+        setLineItems(invoice.lineItems || []);
+        setShowHistory(false);
+        setStep(4); // Go to preview
+      };
+
+      // Duplicate invoice (copy to create new)
+      const duplicateInvoice = (invoice) => {
+        // Generate new invoice number
+        const today = new Date();
+        const dateStr = (today.getMonth() + 1).toString().padStart(2, '0') +
+                        today.getDate().toString().padStart(2, '0') +
+                        today.getFullYear();
+        const newNumber = `${dateStr}-${invoiceHistory.length + 1}`;
+
+        setInvoiceData({
+          companyName: invoiceData.companyName,
+          companyAddress1: invoiceData.companyAddress1,
+          companyAddress2: invoiceData.companyAddress2,
+          companyPhone: invoiceData.companyPhone,
+          payableTo: invoiceData.payableTo,
+          invoiceFor: invoice.invoiceFor,
+          clientName: invoice.clientName,
+          clientCompany: invoice.clientCompany,
+          clientAddress1: invoice.clientAddress1,
+          clientAddress2: invoice.clientAddress2,
+          project: invoice.project,
+          invoiceNumber: newNumber,
+          submittedDate: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+          dueDate: '',
+          adjustments: invoice.adjustments,
+          servicesSummary: invoice.servicesSummary
+        });
+        setLineItems(invoice.lineItems || []);
+        setShowHistory(false);
+        setStep(2); // Go to line items to review/edit
+      };
+
+      // Export all data to JSON file
+      const exportAllData = () => {
+        const exportData = {
+          version: DATA_VERSION,
+          exportedAt: new Date().toISOString(),
+          clients: savedClients,
+          invoices: invoiceHistory
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `invoice-generator-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      };
+
+      // Import data from JSON file
+      const importData = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+
+            // Validate structure
+            if (!data.version || !data.exportedAt) {
+              throw new Error('Invalid backup file format');
+            }
+
+            // Confirm import
+            const clientCount = data.clients?.length || 0;
+            const invoiceCount = data.invoices?.length || 0;
+            if (!confirm(`Import ${clientCount} clients and ${invoiceCount} invoices?\n\nThis will MERGE with your existing data.`)) {
+              return;
+            }
+
+            // Merge clients (avoid duplicates by id)
+            if (data.clients?.length) {
+              const existingIds = new Set(savedClients.map(c => c.id));
+              const newClients = data.clients.filter(c => !existingIds.has(c.id));
+              const mergedClients = [...savedClients, ...newClients];
+              setSavedClients(mergedClients);
+              localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(mergedClients));
+            }
+
+            // Merge invoices (avoid duplicates by id)
+            if (data.invoices?.length) {
+              const existingIds = new Set(invoiceHistory.map(i => i.id));
+              const newInvoices = data.invoices.filter(i => !existingIds.has(i.id));
+              const mergedInvoices = [...invoiceHistory, ...newInvoices];
+              // Sort by createdAt descending
+              mergedInvoices.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+              setInvoiceHistory(mergedInvoices);
+              localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(mergedInvoices));
+            }
+
+            alert(`Successfully imported ${data.clients?.length || 0} clients and ${data.invoices?.length || 0} invoices!`);
+          } catch (err) {
+            alert('Error importing data: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // Reset input
       };
 
       // Save API key to localStorage (obfuscated)
@@ -347,7 +567,21 @@ Extract every single line item. Don't skip or summarize any charges.`
           html2canvas: { scale: 2 },
           jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
-        
+
+        // Save invoice to history before generating PDF
+        const existingInvoice = invoiceHistory.find(inv => inv.invoiceNumber === invoiceData.invoiceNumber);
+        if (!existingInvoice) {
+          saveInvoiceToHistory(invoiceData);
+        } else {
+          // Update existing invoice
+          updateInvoiceInHistory(existingInvoice.id, {
+            ...invoiceData,
+            lineItems: lineItems,
+            subtotal: subtotal,
+            total: total
+          });
+        }
+
         await html2pdf().set(opt).from(element).save();
       };
 
@@ -757,6 +991,200 @@ Extract every single line item. Don't skip or summarize any charges.`
         </div>
       );
 
+      // Filter invoices for history view
+      const filteredInvoices = invoiceHistory.filter(inv => {
+        // Search filter
+        const searchLower = historySearch.toLowerCase();
+        const matchesSearch = !historySearch ||
+          inv.invoiceNumber?.toLowerCase().includes(searchLower) ||
+          inv.clientName?.toLowerCase().includes(searchLower) ||
+          inv.clientCompany?.toLowerCase().includes(searchLower) ||
+          inv.project?.toLowerCase().includes(searchLower);
+
+        // Payment status filter
+        const matchesFilter = historyFilter === 'all' ||
+          (historyFilter === 'paid' && inv.paymentStatus === 'paid') ||
+          (historyFilter === 'unpaid' && inv.paymentStatus !== 'paid');
+
+        return matchesSearch && matchesFilter;
+      });
+
+      // Invoice History Panel
+      const renderHistory = () => (
+        <div className={`fixed inset-0 z-50 ${showHistory ? '' : 'pointer-events-none'}`}>
+          {/* Backdrop */}
+          <div
+            className={`absolute inset-0 bg-black transition-opacity duration-300 ${showHistory ? 'opacity-50' : 'opacity-0'}`}
+            onClick={() => setShowHistory(false)}
+          />
+
+          {/* Slide-over panel */}
+          <div className={`absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl transform transition-transform duration-300 ${showHistory ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className="h-full flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <Icon name="history" className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-slate-800">Invoice History</h2>
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-sm rounded-full">
+                    {invoiceHistory.length}
+                  </span>
+                </div>
+                <button onClick={() => setShowHistory(false)} className="p-2 text-slate-400 hover:text-slate-600">
+                  <Icon name="x" className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Search and Filter */}
+              <div className="px-6 py-4 border-b border-slate-200 space-y-3">
+                <input
+                  type="text"
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  placeholder="Search by invoice #, client, project..."
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:border-blue-400 outline-none"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setHistoryFilter('all')}
+                    className={`px-3 py-1 rounded-full text-sm ${historyFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setHistoryFilter('unpaid')}
+                    className={`px-3 py-1 rounded-full text-sm ${historyFilter === 'unpaid' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}
+                  >
+                    Unpaid
+                  </button>
+                  <button
+                    onClick={() => setHistoryFilter('paid')}
+                    className={`px-3 py-1 rounded-full text-sm ${historyFilter === 'paid' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}
+                  >
+                    Paid
+                  </button>
+                </div>
+              </div>
+
+              {/* Invoice List */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {filteredInvoices.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500">
+                    {invoiceHistory.length === 0 ? (
+                      <>
+                        <Icon name="file" className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                        <p>No invoices yet</p>
+                        <p className="text-sm mt-1">Invoices are saved when you download PDFs</p>
+                      </>
+                    ) : (
+                      <p>No invoices match your search</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredInvoices.map(inv => (
+                      <div key={inv.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-800">#{inv.invoiceNumber}</span>
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                inv.paymentStatus === 'paid'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}>
+                                {inv.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-600 mt-1">
+                              {inv.clientCompany || inv.clientName}
+                            </p>
+                          </div>
+                          <span className="text-lg font-semibold text-slate-800">
+                            {formatCurrency(inv.total)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm text-slate-500">
+                          <div className="flex items-center gap-4">
+                            <span>{inv.invoiceFor}</span>
+                            <span>•</span>
+                            <span>{inv.submittedDate}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => loadInvoiceFromHistory(inv)}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                              title="View invoice"
+                            >
+                              <Icon name="eye" className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => duplicateInvoice(inv)}
+                              className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded"
+                              title="Duplicate invoice"
+                            >
+                              <Icon name="copy" className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const newStatus = inv.paymentStatus === 'paid' ? 'unpaid' : 'paid';
+                                updateInvoiceInHistory(inv.id, {
+                                  paymentStatus: newStatus,
+                                  datePaid: newStatus === 'paid' ? new Date().toISOString() : null
+                                });
+                              }}
+                              className={`p-1.5 rounded ${
+                                inv.paymentStatus === 'paid'
+                                  ? 'text-green-600 hover:bg-green-50'
+                                  : 'text-slate-400 hover:text-green-600 hover:bg-green-50'
+                              }`}
+                              title={inv.paymentStatus === 'paid' ? 'Mark as unpaid' : 'Mark as paid'}
+                            >
+                              <Icon name="dollarSign" className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteInvoiceFromHistory(inv.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                              title="Delete invoice"
+                            >
+                              <Icon name="trash" className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer with export/import */}
+              <div className="px-6 py-4 border-t border-slate-200 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-slate-500">
+                    {invoiceHistory.length} invoice{invoiceHistory.length !== 1 ? 's' : ''} · {savedClients.length} client{savedClients.length !== 1 ? 's' : ''}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => importInputRef.current?.click()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg"
+                    >
+                      <Icon name="import" className="w-4 h-4" /> Import
+                    </button>
+                    <button
+                      onClick={exportAllData}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                    >
+                      <Icon name="export" className="w-4 h-4" /> Export All
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
       const steps = [
         { num: 1, label: 'Upload' },
         { num: 2, label: 'Line Items' },
@@ -766,13 +1194,36 @@ Extract every single line item. Don't skip or summarize any charges.`
 
       return (
         <div className="min-h-screen bg-slate-50">
+          {/* Hidden file input for import */}
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json"
+            onChange={importData}
+            className="hidden"
+          />
+
           <div className="bg-white border-b border-slate-200 px-6 py-4 no-print">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Icon name="file" className="w-6 h-6 text-blue-600" />
                 <span className="font-semibold text-slate-800">Invoice Generator</span>
+                {/* History button */}
+                <button
+                  onClick={() => setShowHistory(true)}
+                  className="flex items-center gap-1.5 ml-4 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                  title="View invoice history"
+                >
+                  <Icon name="history" className="w-4 h-4" />
+                  <span>History</span>
+                  {invoiceHistory.length > 0 && (
+                    <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                      {invoiceHistory.length}
+                    </span>
+                  )}
+                </button>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {steps.map((s, idx) => (
                   <React.Fragment key={s.num}>
@@ -816,6 +1267,9 @@ Extract every single line item. Don't skip or summarize any charges.`
               </div>
             </div>
           )}
+
+          {/* Invoice History Panel */}
+          {renderHistory()}
         </div>
       );
     }
