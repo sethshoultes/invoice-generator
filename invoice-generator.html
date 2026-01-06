@@ -53,7 +53,14 @@
       if (!displayDate) return '';
       const parts = displayDate.split('/');
       if (parts.length !== 3) return '';
-      const [m, d, y] = parts;
+      let [m, d, y] = parts;
+
+      // Handle 2-digit years: 00-49 → 20xx, 50-99 → 19xx
+      if (y.length === 2) {
+        const yearNum = parseInt(y);
+        y = yearNum < 50 ? `20${y}` : `19${y}`;
+      }
+
       return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
     };
 
@@ -439,7 +446,15 @@
             if (!dateStr) return null;
             const parts = dateStr.split('/');
             if (parts.length !== 3) return null;
-            return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+
+            let year = parts[2];
+            // Handle 2-digit years: 00-49 → 20xx, 50-99 → 19xx
+            if (year.length === 2) {
+              const yearNum = parseInt(year);
+              year = yearNum < 50 ? `20${year}` : `19${year}`;
+            }
+
+            return `${year}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
           };
 
           // Create invoice
