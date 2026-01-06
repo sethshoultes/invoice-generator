@@ -10,6 +10,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
     @media print { .no-print { display: none; } }
@@ -20,6 +21,14 @@
 
   <script type="text/babel">
     const { useState, useRef, useEffect } = React;
+
+    // Initialize Supabase client
+    const supabaseUrl = 'http://127.0.0.1:8002';
+    const supabaseAnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+      db: { schema: 'public' },
+      auth: { persistSession: false }
+    });
 
     // Obfuscation helpers for API key storage (not encryption, but not plaintext)
     const obfuscate = (str) => btoa(str.split('').reverse().join(''));
@@ -140,39 +149,153 @@
 
       // Auto-generate invoice number when entering Details step
       useEffect(() => {
-        if (step === 3 && !invoiceData.invoiceNumber) {
-          const today = new Date();
-          const dateStr = (today.getMonth() + 1).toString().padStart(2, '0') +
-                          today.getDate().toString().padStart(2, '0') +
-                          today.getFullYear();
-          updateInvoiceData('invoiceNumber', `${dateStr}-1`);
-        }
+        const generateInvoiceNumber = async () => {
+          if (step === 3 && !invoiceData.invoiceNumber) {
+            const today = new Date();
+            const dateStr = (today.getMonth() + 1).toString().padStart(2, '0') +
+                            today.getDate().toString().padStart(2, '0') +
+                            today.getFullYear();
+
+            // Check database for existing invoices with this date prefix
+            try {
+              const { data, error } = await supabase
+                .from('invoices')
+                .select('invoice_number')
+                .like('invoice_number', `${dateStr}-%`)
+                .order('invoice_number', { ascending: false })
+                .limit(1);
+
+              if (error) throw error;
+
+              let nextNumber = 1;
+              if (data && data.length > 0) {
+                // Extract the number after the dash and increment
+                const lastInvoice = data[0].invoice_number;
+                const match = lastInvoice.match(/-(\d+)$/);
+                if (match) {
+                  nextNumber = parseInt(match[1]) + 1;
+                }
+              }
+
+              updateInvoiceData('invoiceNumber', `${dateStr}-${nextNumber}`);
+            } catch (err) {
+              console.error('Error generating invoice number:', err);
+              // Fallback to -1 if there's an error
+              updateInvoiceData('invoiceNumber', `${dateStr}-1`);
+            }
+          }
+        };
+
+        generateInvoiceNumber();
       }, [step]);
 
-      // Load saved clients from localStorage
+      // Load saved clients from Supabase
       useEffect(() => {
-        try {
-          const clients = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLIENTS) || '[]');
-          setSavedClients(clients);
-        } catch (e) {
-          setSavedClients([]);
-        }
+        const loadClients = async () => {
+          try {
+            const { data, error } = await supabase
+              .from('clients')
+              .select('*')
+              .order('name', { ascending: true });
+
+            if (error) throw error;
+
+            // Map Supabase client data to our format
+            const clients = (data || []).map(client => ({
+              id: client.id,
+              name: client.name,
+              clientName: client.name,
+              clientCompany: client.company || '',
+              clientAddress1: client.address_line1 || '',
+              clientAddress2: `${client.city || ''}${client.city && client.state ? ', ' : ''}${client.state || ''} ${client.zip || ''}`.trim(),
+              project: '' // Not stored in client table
+            }));
+
+            setSavedClients(clients);
+          } catch (e) {
+            console.error('Error loading clients:', e);
+            setSavedClients([]);
+          }
+        };
+        loadClients();
       }, []);
 
-      // Load invoice history from localStorage
+      // Load invoice history from Supabase
       useEffect(() => {
-        try {
-          const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.INVOICES) || '[]');
-          setInvoiceHistory(history);
-        } catch (e) {
-          setInvoiceHistory([]);
-        }
+        const loadInvoiceHistory = async () => {
+          try {
+            const { data, error } = await supabase
+              .from('invoices')
+              .select(`
+                *,
+                clients!invoices_client_id_fkey (
+                  name,
+                  company,
+                  address_line1,
+                  city,
+                  state,
+                  zip
+                ),
+                line_items (
+                  id,
+                  item_date,
+                  description,
+                  qty,
+                  unit_price,
+                  total_price,
+                  note,
+                  note_in_pdf
+                )
+              `)
+              .order('submitted_date', { ascending: false });
+
+            if (error) throw error;
+
+            // Map Supabase data to our format
+            const invoices = (data || []).map(inv => ({
+              id: inv.id,
+              createdAt: inv.created_at,
+              updatedAt: inv.updated_at,
+              invoiceNumber: inv.invoice_number,
+              invoiceFor: inv.invoice_for || '',
+              clientName: inv.clients?.name || '',
+              clientCompany: inv.clients?.company || '',
+              clientAddress1: inv.clients?.address_line1 || '',
+              clientAddress2: `${inv.clients?.city || ''}${inv.clients?.city && inv.clients?.state ? ', ' : ''}${inv.clients?.state || ''} ${inv.clients?.zip || ''}`.trim(),
+              project: inv.project || '',
+              submittedDate: new Date(inv.submitted_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+              dueDate: inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '',
+              adjustments: parseFloat(inv.adjustments) || 0,
+              servicesSummary: '',
+              lineItems: (inv.line_items || []).map(item => ({
+                id: item.id,
+                date: new Date(item.item_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+                description: item.description,
+                qty: item.qty,
+                unitPrice: parseFloat(item.unit_price),
+                totalPrice: parseFloat(item.total_price)
+              })),
+              subtotal: parseFloat(inv.subtotal) || 0,
+              total: parseFloat(inv.total) || 0,
+              paymentStatus: inv.payment_status || 'unpaid',
+              datePaid: inv.payment_date,
+              paymentMethod: inv.payment_method,
+              paymentNotes: inv.payment_notes || ''
+            }));
+
+            setInvoiceHistory(invoices);
+          } catch (e) {
+            console.error('Error loading invoice history:', e);
+            setInvoiceHistory([]);
+          }
+        };
+        loadInvoiceHistory();
       }, []);
 
       // Select a saved client
       const selectClient = (clientId) => {
         if (!clientId) return;
-        const client = savedClients.find(c => c.id === parseInt(clientId));
+        const client = savedClients.find(c => c.id == clientId); // Use == to handle both string and number
         if (client) {
           setInvoiceData(prev => ({
             ...prev,
@@ -185,84 +308,273 @@
         }
       };
 
-      // Save current client to localStorage
-      const saveCurrentClient = () => {
+      // Save current client to Supabase
+      const saveCurrentClient = async () => {
         const name = invoiceData.clientName || invoiceData.clientCompany;
         if (!name) {
           alert('Please enter a client name or company name first.');
           return;
         }
-        const newClient = {
-          id: Date.now(),
-          name,
-          clientName: invoiceData.clientName,
-          clientCompany: invoiceData.clientCompany,
-          clientAddress1: invoiceData.clientAddress1,
-          clientAddress2: invoiceData.clientAddress2,
-          project: invoiceData.project
-        };
-        const updated = [...savedClients, newClient];
-        setSavedClients(updated);
-        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(updated));
+
+        try {
+          // Parse address_line2 to extract city, state, zip
+          const address2 = invoiceData.clientAddress2 || '';
+          const cityStateZipMatch = address2.match(/^([^,]+)(?:,\s*([A-Z]{2}))?\s*(\d{5}(?:-\d{4})?)?$/);
+
+          const clientData = {
+            name: name,
+            company: invoiceData.clientCompany || null,
+            address_line1: invoiceData.clientAddress1 || null,
+            city: cityStateZipMatch?.[1]?.trim() || null,
+            state: cityStateZipMatch?.[2] || null,
+            zip: cityStateZipMatch?.[3] || null
+          };
+
+          const { data, error } = await supabase
+            .from('clients')
+            .insert([clientData])
+            .select();
+
+          if (error) {
+            // Check if it's a duplicate error
+            if (error.code === '23505') {
+              alert('This client already exists.');
+            } else {
+              throw error;
+            }
+            return;
+          }
+
+          if (data && data[0]) {
+            const newClient = {
+              id: data[0].id,
+              name: data[0].name,
+              clientName: data[0].name,
+              clientCompany: data[0].company || '',
+              clientAddress1: data[0].address_line1 || '',
+              clientAddress2: `${data[0].city || ''}${data[0].city && data[0].state ? ', ' : ''}${data[0].state || ''} ${data[0].zip || ''}`.trim(),
+              project: ''
+            };
+            setSavedClients([...savedClients, newClient]);
+            alert('Client saved successfully!');
+          }
+        } catch (e) {
+          console.error('Error saving client:', e);
+          alert('Error saving client: ' + e.message);
+        }
       };
 
-      // Delete a saved client
-      const deleteClient = (clientId) => {
-        const updated = savedClients.filter(c => c.id !== clientId);
-        setSavedClients(updated);
-        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(updated));
+      // Delete a saved client from Supabase
+      const deleteClient = async (clientId) => {
+        try {
+          const { error } = await supabase
+            .from('clients')
+            .delete()
+            .eq('id', clientId);
+
+          if (error) {
+            // Check if it's a foreign key constraint error
+            if (error.code === '23503') {
+              alert('Cannot delete client: This client has existing invoices.');
+            } else {
+              throw error;
+            }
+            return;
+          }
+
+          const updated = savedClients.filter(c => c.id !== clientId);
+          setSavedClients(updated);
+        } catch (e) {
+          console.error('Error deleting client:', e);
+          alert('Error deleting client: ' + e.message);
+        }
       };
 
-      // Save invoice to history
-      const saveInvoiceToHistory = (invoiceToSave) => {
-        const invoice = {
-          id: generateId(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          invoiceNumber: invoiceToSave.invoiceNumber,
-          invoiceFor: invoiceToSave.invoiceFor,
-          clientName: invoiceToSave.clientName,
-          clientCompany: invoiceToSave.clientCompany,
-          clientAddress1: invoiceToSave.clientAddress1,
-          clientAddress2: invoiceToSave.clientAddress2,
-          project: invoiceToSave.project,
-          submittedDate: invoiceToSave.submittedDate,
-          dueDate: invoiceToSave.dueDate,
-          adjustments: invoiceToSave.adjustments,
-          servicesSummary: invoiceToSave.servicesSummary,
-          lineItems: lineItems,
-          subtotal: subtotal,
-          total: total,
-          // Payment tracking
-          paymentStatus: 'unpaid', // unpaid, partial, paid
-          datePaid: null,
-          paymentMethod: null,
-          paymentNotes: ''
-        };
+      // Save invoice to history in Supabase
+      const saveInvoiceToHistory = async (invoiceToSave) => {
+        try {
+          // First, find or create the client
+          let clientId = null;
+          const clientName = invoiceToSave.clientName || invoiceToSave.clientCompany;
 
-        const updated = [invoice, ...invoiceHistory];
-        setInvoiceHistory(updated);
-        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updated));
-        return invoice;
+          if (clientName) {
+            // Check if client exists
+            const { data: existingClients } = await supabase
+              .from('clients')
+              .select('id')
+              .eq('name', clientName)
+              .limit(1);
+
+            if (existingClients && existingClients.length > 0) {
+              clientId = existingClients[0].id;
+            } else {
+              // Create new client
+              const address2 = invoiceToSave.clientAddress2 || '';
+              const cityStateZipMatch = address2.match(/^([^,]+)(?:,\s*([A-Z]{2}))?\s*(\d{5}(?:-\d{4})?)?$/);
+
+              const { data: newClient, error: clientError } = await supabase
+                .from('clients')
+                .insert([{
+                  name: clientName,
+                  company: invoiceToSave.clientCompany || null,
+                  address_line1: invoiceToSave.clientAddress1 || null,
+                  city: cityStateZipMatch?.[1]?.trim() || null,
+                  state: cityStateZipMatch?.[2] || null,
+                  zip: cityStateZipMatch?.[3] || null
+                }])
+                .select()
+                .single();
+
+              if (clientError) throw clientError;
+              clientId = newClient.id;
+            }
+          }
+
+          if (!clientId) {
+            throw new Error('Client information is required');
+          }
+
+          // Parse dates from MM/DD/YYYY to YYYY-MM-DD
+          const parseDate = (dateStr) => {
+            if (!dateStr) return null;
+            const parts = dateStr.split('/');
+            if (parts.length !== 3) return null;
+            return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+          };
+
+          // Create invoice
+          const invoiceData = {
+            invoice_number: invoiceToSave.invoiceNumber,
+            client_id: clientId,
+            invoice_for: invoiceToSave.invoiceFor || null,
+            project: invoiceToSave.project || null,
+            submitted_date: parseDate(invoiceToSave.submittedDate) || new Date().toISOString().split('T')[0],
+            due_date: parseDate(invoiceToSave.dueDate),
+            subtotal: subtotal,
+            adjustments: parseFloat(invoiceToSave.adjustments) || 0,
+            total: total,
+            payment_status: 'unpaid'
+          };
+
+          const { data: newInvoice, error: invoiceError } = await supabase
+            .from('invoices')
+            .insert([invoiceData])
+            .select()
+            .single();
+
+          if (invoiceError) throw invoiceError;
+
+          // Create line items
+          const lineItemsData = lineItems.map((item, index) => ({
+            invoice_id: newInvoice.id,
+            item_date: parseDate(item.date) || new Date().toISOString().split('T')[0],
+            description: item.description,
+            qty: item.qty || 1,
+            unit_price: parseFloat(item.unitPrice) || 0,
+            total_price: parseFloat(item.totalPrice) || 0,
+            line_order: index
+          }));
+
+          if (lineItemsData.length > 0) {
+            const { error: lineItemsError } = await supabase
+              .from('line_items')
+              .insert(lineItemsData);
+
+            if (lineItemsError) throw lineItemsError;
+          }
+
+          // Update local state
+          const invoice = {
+            id: newInvoice.id,
+            createdAt: newInvoice.created_at,
+            updatedAt: newInvoice.updated_at,
+            invoiceNumber: newInvoice.invoice_number,
+            invoiceFor: newInvoice.invoice_for || '',
+            clientName: invoiceToSave.clientName,
+            clientCompany: invoiceToSave.clientCompany,
+            clientAddress1: invoiceToSave.clientAddress1,
+            clientAddress2: invoiceToSave.clientAddress2,
+            project: newInvoice.project || '',
+            submittedDate: invoiceToSave.submittedDate,
+            dueDate: invoiceToSave.dueDate,
+            adjustments: invoiceToSave.adjustments,
+            servicesSummary: invoiceToSave.servicesSummary,
+            lineItems: lineItems,
+            subtotal: subtotal,
+            total: total,
+            paymentStatus: 'unpaid',
+            datePaid: null,
+            paymentMethod: null,
+            paymentNotes: ''
+          };
+
+          setInvoiceHistory([invoice, ...invoiceHistory]);
+          return invoice;
+        } catch (e) {
+          console.error('Error saving invoice:', e);
+          alert('Error saving invoice: ' + e.message);
+          return null;
+        }
       };
 
-      // Update invoice in history
-      const updateInvoiceInHistory = (invoiceId, updates) => {
-        const updated = invoiceHistory.map(inv =>
-          inv.id === invoiceId
-            ? { ...inv, ...updates, updatedAt: new Date().toISOString() }
-            : inv
-        );
-        setInvoiceHistory(updated);
-        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updated));
+      // Update invoice in history in Supabase
+      const updateInvoiceInHistory = async (invoiceId, updates) => {
+        try {
+          // Parse dates if they exist
+          const parseDate = (dateStr) => {
+            if (!dateStr) return null;
+            const parts = dateStr.split('/');
+            if (parts.length !== 3) return null;
+            return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+          };
+
+          const updateData = {};
+
+          if (updates.paymentStatus !== undefined) updateData.payment_status = updates.paymentStatus;
+          if (updates.datePaid !== undefined) updateData.payment_date = updates.datePaid ? parseDate(updates.datePaid) : null;
+          if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod;
+          if (updates.paymentNotes !== undefined) updateData.payment_notes = updates.paymentNotes;
+          if (updates.subtotal !== undefined) updateData.subtotal = updates.subtotal;
+          if (updates.total !== undefined) updateData.total = updates.total;
+
+          const { error } = await supabase
+            .from('invoices')
+            .update(updateData)
+            .eq('id', invoiceId);
+
+          if (error) throw error;
+
+          // Update local state
+          const updated = invoiceHistory.map(inv =>
+            inv.id === invoiceId
+              ? { ...inv, ...updates, updatedAt: new Date().toISOString() }
+              : inv
+          );
+          setInvoiceHistory(updated);
+        } catch (e) {
+          console.error('Error updating invoice:', e);
+          alert('Error updating invoice: ' + e.message);
+        }
       };
 
-      // Delete invoice from history
-      const deleteInvoiceFromHistory = (invoiceId) => {
+      // Delete invoice from history in Supabase
+      const deleteInvoiceFromHistory = async (invoiceId) => {
         if (!confirm('Delete this invoice from history?')) return;
-        const updated = invoiceHistory.filter(inv => inv.id !== invoiceId);
-        setInvoiceHistory(updated);
-        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updated));
+
+        try {
+          const { error } = await supabase
+            .from('invoices')
+            .delete()
+            .eq('id', invoiceId);
+
+          if (error) throw error;
+
+          const updated = invoiceHistory.filter(inv => inv.id !== invoiceId);
+          setInvoiceHistory(updated);
+        } catch (e) {
+          console.error('Error deleting invoice:', e);
+          alert('Error deleting invoice: ' + e.message);
+        }
       };
 
       // Load invoice from history for viewing/editing
@@ -322,33 +634,55 @@
         setStep(2); // Go to line items to review/edit
       };
 
-      // Export all data to JSON file
-      const exportAllData = () => {
-        const exportData = {
-          version: DATA_VERSION,
-          exportedAt: new Date().toISOString(),
-          clients: savedClients,
-          invoices: invoiceHistory
-        };
+      // Export all data to JSON file (from Supabase)
+      const exportAllData = async () => {
+        try {
+          // Fetch fresh data from Supabase
+          const { data: clients, error: clientsError } = await supabase
+            .from('clients')
+            .select('*');
 
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `invoice-generator-backup-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+          if (clientsError) throw clientsError;
+
+          const { data: invoices, error: invoicesError } = await supabase
+            .from('invoices')
+            .select(`
+              *,
+              clients!invoices_client_id_fkey (*),
+              line_items (*)
+            `);
+
+          if (invoicesError) throw invoicesError;
+
+          const exportData = {
+            version: DATA_VERSION,
+            exportedAt: new Date().toISOString(),
+            clients: clients || [],
+            invoices: invoices || []
+          };
+
+          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `invoice-generator-backup-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error('Error exporting data:', e);
+          alert('Error exporting data: ' + e.message);
+        }
       };
 
-      // Import data from JSON file
+      // Import data from JSON file (note: simplified - assumes Supabase export format)
       const importData = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
           try {
             const data = JSON.parse(event.target.result);
 
@@ -364,27 +698,8 @@
               return;
             }
 
-            // Merge clients (avoid duplicates by id)
-            if (data.clients?.length) {
-              const existingIds = new Set(savedClients.map(c => c.id));
-              const newClients = data.clients.filter(c => !existingIds.has(c.id));
-              const mergedClients = [...savedClients, ...newClients];
-              setSavedClients(mergedClients);
-              localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(mergedClients));
-            }
+            alert('Import feature currently exports from Supabase but does not import back. Please use the Supabase dashboard or API to restore data.');
 
-            // Merge invoices (avoid duplicates by id)
-            if (data.invoices?.length) {
-              const existingIds = new Set(invoiceHistory.map(i => i.id));
-              const newInvoices = data.invoices.filter(i => !existingIds.has(i.id));
-              const mergedInvoices = [...invoiceHistory, ...newInvoices];
-              // Sort by createdAt descending
-              mergedInvoices.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-              setInvoiceHistory(mergedInvoices);
-              localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(mergedInvoices));
-            }
-
-            alert(`Successfully imported ${data.clients?.length || 0} clients and ${data.invoices?.length || 0} invoices!`);
           } catch (err) {
             alert('Error importing data: ' + err.message);
           }
