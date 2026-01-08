@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 
-from routes import clients, invoices, recurring_items
+from routes import clients, invoices, recurring_items, extraction
 from schemas import HealthCheck
 
 # Load environment variables
@@ -46,6 +46,7 @@ app.add_middleware(
 app.include_router(clients.router)
 app.include_router(invoices.router)
 app.include_router(recurring_items.router)
+app.include_router(extraction.router)
 
 
 # Root endpoint
