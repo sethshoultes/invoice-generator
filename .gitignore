@@ -40,5 +40,10 @@ supabase/.temp/
 .branches/
 .temp/
 
+# Vercel
+.vercel/
+dist/
+config.js
+
 # Local plans (keep in .claude)
 PLAN.md

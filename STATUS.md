@@ -1,14 +1,21 @@
 # Project Status
 
-**Last Updated:** 2026-01-06
-**Current Phase:** Supabase Database Integration
-**Current Task:** Migrated from localStorage to Supabase PostgreSQL database
+**Last Updated:** 2026-02-09
+**Current Phase:** Vercel + Supabase Cloud Migration
+**Current Task:** Deploy to Vercel with Supabase Cloud backend
 
 ## What I'm Working On
 
-Successfully integrated Supabase database to replace localStorage for persistent data storage.
+Migrating from local Docker Compose (10 containers) to Vercel static hosting + Supabase Cloud. The original local setup is preserved — no changes to `invoice-generator.html`.
 
 ## Completed Features
+
+- ✅ **Vercel Deployment Config** (2026-02-09)
+  - Created `vercel.json` with build command, rewrites, and security headers
+  - Created `scripts/build.sh` that copies HTML to `dist/` and injects Supabase Cloud credentials from env vars
+  - Created `supabase/init-cloud.sql` for Supabase Cloud (no sample data or GRANT lines)
+  - Updated `.gitignore` for Vercel artifacts (`dist/`, `.vercel/`, `config.js`)
+  - Original `invoice-generator.html` is **untouched** — local Docker setup still works
 
 - ✅ **Supabase Database Integration** (2026-01-06)
   - Added Supabase JS client library via CDN
@@ -48,28 +55,28 @@ Successfully integrated Supabase database to replace localStorage for persistent
 
 ## Recent Progress
 
-- ✅ Integrated Supabase JS client library (2026-01-06)
-- ✅ Migrated all localStorage operations to Supabase database
-- ✅ Updated client CRUD operations to use Supabase REST API
-- ✅ Updated invoice CRUD operations to use Supabase REST API
-- ✅ Tested database integration with test data
-- ✅ Verified data persistence across browser sessions
+- ✅ Created Vercel deployment config (2026-02-09)
+- ✅ Created build script for production HTML generation (2026-02-09)
+- ✅ Created cloud-ready SQL init script (2026-02-09)
+- ✅ Updated .gitignore for Vercel artifacts (2026-02-09)
 
 ## Current Blockers
 
-None - Supabase integration complete and functional.
+**Manual steps required to complete deployment:**
+1. Create Supabase Cloud project at https://supabase.com/dashboard
+2. Run `supabase/init-cloud.sql` in Supabase SQL Editor
+3. Run `vercel` CLI to connect repo and deploy
+4. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` env vars in Vercel
+5. Run `vercel --prod` to deploy to production
 
 ## Next Steps
 
-1. ~~Implement data infrastructure (Supabase database integration)~~ ✅
-2. ~~Implement invoice history (save on download, list view)~~ ✅
-3. ~~Add payment tracking to invoice model~~ ✅
-4. Test the frontend UI with Supabase integration (open in browser)
-5. Add line item notes with PDF toggle
-6. Implement recurring items library
-7. Implement "invoice like last month" feature
-8. Test all features end-to-end
-9. Merge to main
+1. Complete manual Supabase Cloud + Vercel deployment steps (see Blockers above)
+2. Verify all features work on deployed Vercel URL
+3. Optionally export local data and import into cloud
+4. Add line item notes with PDF toggle
+5. Implement recurring items library
+6. Implement "invoice like last month" feature
 
 ## Context Links
 
@@ -80,6 +87,8 @@ None - Supabase integration complete and functional.
 
 ## Key Decisions Made
 
+- **Vercel + Supabase Cloud**: Migrated from Docker Compose to Vercel static hosting + Supabase Cloud for anywhere-access
+- **Separate local/cloud configs**: Build script generates production HTML; original file untouched for local dev
 - **Database Migration**: Migrated from localStorage to Supabase PostgreSQL for persistent, reliable data storage
 - **API Key Security**: Kept Anthropic API key in localStorage (not in database) for security
 - **Client Auto-Creation**: Invoices automatically create clients if they don't exist

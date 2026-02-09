@@ -357,3 +357,59 @@ AI-assisted development suffers from session amnesia. Need persistent context sy
 
 **Related:**
 - See docs/AI-AGENT-MEMORY-SYSTEM.md for full documentation
+
+---
+
+## Decision 007: Vercel + Supabase Cloud Deployment
+
+**Date:** 2026-02-09
+**Status:** ✅ Active
+
+**Decision:**
+Deploy the invoice generator to Vercel (static hosting) with Supabase Cloud (managed PostgreSQL), while keeping the local Docker Compose setup fully intact.
+
+**Context:**
+The local setup requires running 10 Docker containers via Docker Compose for Supabase. This is heavy for a single-page app and limits access to one machine. The `invoice-generator.html` already communicates directly with Supabase via the JS client — no backend server is used.
+
+**Alternatives Considered:**
+
+1. **Keep Docker Compose only** (status quo)
+   - Pros: Already works, full control
+   - Cons: 10 containers for one app, can't access from other devices
+
+2. **Vercel + Supabase Cloud** (chosen)
+   - Pros: Zero infrastructure management, access from anywhere, free tier for both
+   - Cons: Data in cloud (mitigated: only invoice data, not sensitive)
+
+3. **Self-hosted VPS**
+   - Pros: Full control, single machine
+   - Cons: More maintenance than Supabase Cloud, ongoing cost
+
+**Rationale:**
+- The app is a static HTML file — perfect for Vercel's static hosting
+- Supabase Cloud provides managed Postgres with the same API as local Supabase
+- Build script generates production HTML from the same source file
+- Local setup remains untouched (fallback if cloud has issues)
+- Both Vercel and Supabase offer generous free tiers
+
+**Tradeoffs:**
+- ❌ Data stored in Supabase Cloud (not self-hosted)
+- ❌ Depends on third-party services (Vercel, Supabase)
+- ✅ No Docker required for cloud access
+- ✅ Access from any device
+- ✅ Local setup preserved as fallback
+- ✅ Zero infrastructure management
+
+**Implementation Details:**
+- `vercel.json` — Vercel config with build command and rewrites
+- `scripts/build.sh` — Copies HTML to `dist/`, replaces Supabase URL/key via sed
+- `supabase/init-cloud.sql` — Cloud-ready schema (no sample data or GRANTs)
+- Environment variables: `SUPABASE_URL`, `SUPABASE_ANON_KEY` set in Vercel
+- Original `invoice-generator.html` is never modified
+
+**Security Note:**
+RLS policies are `USING (true)` (no auth). The Vercel URL is treated as private/unlisted. Auth can be added later.
+
+**Related:**
+- Decision 001 (browser-only architecture)
+- STATUS.md deployment steps
