@@ -13,10 +13,18 @@ fi
 
 mkdir -p dist
 
-# Copy the HTML file and replace the local Supabase config with cloud values
-sed \
-  -e "s|const supabaseUrl = 'http://127.0.0.1:8002';|const supabaseUrl = '${SUPABASE_URL}';|" \
-  -e "s|const supabaseAnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';|const supabaseAnonKey = '${SUPABASE_ANON_KEY}';|" \
-  invoice-generator.html > dist/invoice-generator.html
-
-echo "Build complete. Supabase URL: ${SUPABASE_URL}"
+# Use Node.js for robust string replacement (avoids sed escaping issues)
+node -e "
+const fs = require('fs');
+let html = fs.readFileSync('invoice-generator.html', 'utf8');
+html = html.replace(
+  \"const supabaseUrl = 'http://127.0.0.1:8002'\",
+  \"const supabaseUrl = '\" + process.env.SUPABASE_URL + \"'\"
+);
+html = html.replace(
+  \"const supabaseAnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'\",
+  \"const supabaseAnonKey = '\" + process.env.SUPABASE_ANON_KEY + \"'\"
+);
+fs.writeFileSync('dist/invoice-generator.html', html);
+console.log('Build complete. Supabase URL: ' + process.env.SUPABASE_URL);
+"
