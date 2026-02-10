@@ -25,6 +25,15 @@ html = html.replace(
   \"const supabaseAnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'\",
   \"const supabaseAnonKey = '\" + process.env.SUPABASE_ANON_KEY.trim() + \"'\"
 );
+// If ANTHROPIC_API_KEY is set, inject a script that pre-populates localStorage
+// so the app auto-loads the key without user input
+const anthropicKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+if (anthropicKey) {
+  const obfuscated = Buffer.from(anthropicKey.split('').reverse().join('')).toString('base64');
+  const injection = '<script>if(!localStorage.getItem(\"anthropic_api_key\")){localStorage.setItem(\"anthropic_api_key\",\"' + obfuscated + '\");}</script>';
+  html = html.replace('</head>', injection + '</head>');
+}
 fs.writeFileSync('dist/invoice-generator.html', html);
-console.log('Build complete. Supabase URL: ' + process.env.SUPABASE_URL);
+console.log('Build complete. Supabase URL: ' + process.env.SUPABASE_URL.trim());
+if (anthropicKey) console.log('Anthropic API key injected.');
 "
