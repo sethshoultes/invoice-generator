@@ -19,11 +19,11 @@ const fs = require('fs');
 let html = fs.readFileSync('invoice-generator.html', 'utf8');
 html = html.replace(
   \"const supabaseUrl = 'http://127.0.0.1:8002'\",
-  \"const supabaseUrl = '\" + process.env.SUPABASE_URL + \"'\"
+  \"const supabaseUrl = '\" + process.env.SUPABASE_URL.trim() + \"'\"
 );
 html = html.replace(
   \"const supabaseAnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'\",
-  \"const supabaseAnonKey = '\" + process.env.SUPABASE_ANON_KEY + \"'\"
+  \"const supabaseAnonKey = '\" + process.env.SUPABASE_ANON_KEY.trim() + \"'\"
 );
 fs.writeFileSync('dist/invoice-generator.html', html);
 console.log('Build complete. Supabase URL: ' + process.env.SUPABASE_URL);
