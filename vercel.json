@@ -1,8 +1,11 @@
 {
   "buildCommand": "bash scripts/build.sh",
   "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/invoice-generator.html" }
+  "crons": [
+    {
+      "path": "/api/keep-alive",
+      "schedule": "0 8 * * *"
+    }
   ],
   "headers": [
     {

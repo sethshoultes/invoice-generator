@@ -47,3 +47,8 @@ config.js
 
 # Local plans (keep in .claude)
 PLAN.md
+.vercel
+.env*.local
+
+# Local tooling artifacts
+.wolf/

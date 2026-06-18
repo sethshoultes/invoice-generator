@@ -37,7 +37,7 @@ if (anthropicKey) {
   const minimalIndicator = '{/* API Key - Pre-configured */}\\n            {apiKey && <div className=\"mb-6 bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2\">\\n              <Icon name=\"check\" className=\"w-4 h-4 text-green-600\" />\\n              <span className=\"text-sm text-green-800\">API key configured</span>\\n            </div>}';
   html = html.replace(apiKeyBlock, minimalIndicator);
 }
-fs.writeFileSync('dist/invoice-generator.html', html);
+fs.writeFileSync('dist/index.html', html);
 console.log('Build complete. Supabase URL: ' + process.env.SUPABASE_URL.trim());
 if (anthropicKey) console.log('Anthropic API key injected.');
 "
