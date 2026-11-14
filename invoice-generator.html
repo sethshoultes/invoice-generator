@@ -28,9 +28,26 @@
     // Initialize Supabase client
     const supabaseUrl = 'http://127.0.0.1:8002';
     const supabaseAnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+    // Browsers trim header values and reject non-Latin-1 ones, so trim here (the
+    // server trims too) and send nothing rather than throw on an unsendable value.
+    const passcodeHeader = (value) => {
+      const v = (value || '').trim();
+      return v && !/[^\x20-\xFF]/.test(v) ? v : null;
+    };
+
+    // RLS admits a request only when x-app-passcode matches the stored hash (see
+    // supabase/migrations/20261114000000_passcode_rls.sql); the anon key alone reads nothing.
     const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
       db: { schema: 'public' },
-      auth: { persistSession: false }
+      auth: { persistSession: false },
+      global: {
+        fetch: (url, options = {}) => {
+          const headers = new Headers(options.headers);
+          const header = passcodeHeader(localStorage.getItem(STORAGE_KEYS.PASSCODE));
+          if (header) headers.set('x-app-passcode', header);
+          return fetch(url, { ...options, headers });
+        }
+      }
     });
 
 
@@ -107,6 +124,8 @@
       const [error, setError] = useState(null);
       const [passcode, setPasscode] = useState('');
       const [editingPasscode, setEditingPasscode] = useState(false);
+      // 'ok' | 'missing' | 'rejected': without an accepted passcode every list reads empty.
+      const [passcodeStatus, setPasscodeStatus] = useState('ok');
       const invoiceRef = useRef(null);
       const importInputRef = useRef(null);
 
@@ -188,8 +207,31 @@
         generateInvoiceNumber();
       }, [step]);
 
+      // Say why the lists are empty when the passcode is missing or not accepted.
+      useEffect(() => {
+        let superseded = false;
+        const checkPasscode = async () => {
+          if (!passcodeHeader(passcode)) {
+            setPasscodeStatus('missing');
+            return;
+          }
+          const { data, error } = await supabase.rpc('app_passcode_ok');
+          if (superseded) return;
+          if (error) {
+            // Unknown is not "rejected": show no banner rather than a wrong one.
+            console.error('Error checking passcode:', error);
+            setPasscodeStatus('ok');
+            return;
+          }
+          setPasscodeStatus(data ? 'ok' : 'rejected');
+        };
+        checkPasscode();
+        return () => { superseded = true; };
+      }, [passcode]);
+
       // Load saved clients from Supabase
       useEffect(() => {
+        let superseded = false;
         const loadClients = async () => {
           try {
             const { data, error } = await supabase
@@ -210,17 +252,19 @@
               project: '' // Not stored in client table
             }));
 
-            setSavedClients(clients);
+            if (!superseded) setSavedClients(clients);
           } catch (e) {
             console.error('Error loading clients:', e);
-            setSavedClients([]);
+            if (!superseded) setSavedClients([]);
           }
         };
         loadClients();
-      }, []);
+        return () => { superseded = true; };
+      }, [passcode]);
 
       // Load invoice history from Supabase
       useEffect(() => {
+        let superseded = false;
         const loadInvoiceHistory = async () => {
           try {
             const { data, error } = await supabase
@@ -285,14 +329,15 @@
               paymentNotes: inv.payment_notes || ''
             }));
 
-            setInvoiceHistory(invoices);
+            if (!superseded) setInvoiceHistory(invoices);
           } catch (e) {
             console.error('Error loading invoice history:', e);
-            setInvoiceHistory([]);
+            if (!superseded) setInvoiceHistory([]);
           }
         };
         loadInvoiceHistory();
-      }, []);
+        return () => { superseded = true; };
+      }, [passcode]);
 
       // Select a saved client
       const selectClient = (clientId) => {
@@ -770,8 +815,8 @@
           // lives server-side and never reaches the browser.
           const response = await fetch('/api/extract', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ passcode, base64Data, mediaType })
+            headers: { 'Content-Type': 'application/json', 'x-app-passcode': passcodeHeader(passcode) || '' },
+            body: JSON.stringify({ base64Data, mediaType })
           });
 
           const data = await response.json();
@@ -1506,6 +1551,16 @@
             onChange={importData}
             className="hidden"
           />
+
+          {passcodeStatus !== 'ok' && (
+            <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-sm text-amber-800 no-print">
+              <div className="max-w-4xl mx-auto">
+                {passcodeStatus === 'missing'
+                  ? 'Passcode needed: enter the access passcode on the Upload step to see your clients and invoices.'
+                  : 'Passcode not accepted: your clients and invoices stay hidden. Change it on the Upload step.'}
+              </div>
+            </div>
+          )}
 
           <div className="bg-white border-b border-slate-200 px-6 py-4 no-print">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
