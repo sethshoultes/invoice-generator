@@ -239,22 +239,6 @@ ALTER TABLE public.recurring_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.source_statements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations via anon key (no auth required)
--- The Vercel URL is treated as private/unlisted
-CREATE POLICY "Allow all operations" ON public.clients
-    FOR ALL USING (true);
+-- No policy here: with RLS on and no policy the anon key reads nothing. Run
+-- migrations/20261114000000_passcode_rls.sql next; it adds the passcode policies.
 
-CREATE POLICY "Allow all operations" ON public.invoices
-    FOR ALL USING (true);
-
-CREATE POLICY "Allow all operations" ON public.line_items
-    FOR ALL USING (true);
-
-CREATE POLICY "Allow all operations" ON public.recurring_items
-    FOR ALL USING (true);
-
-CREATE POLICY "Allow all operations" ON public.source_statements
-    FOR ALL USING (true);
-
-CREATE POLICY "Allow all operations" ON public.settings
-    FOR ALL USING (true);

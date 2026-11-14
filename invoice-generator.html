@@ -28,9 +28,18 @@
     // Initialize Supabase client
     const supabaseUrl = 'http://127.0.0.1:8002';
     const supabaseAnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+    // RLS admits a request only when x-app-passcode matches the stored hash (see
+    // supabase/migrations/20261114000000_passcode_rls.sql); the anon key alone reads nothing.
     const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
       db: { schema: 'public' },
-      auth: { persistSession: false }
+      auth: { persistSession: false },
+      global: {
+        fetch: (url, options = {}) => {
+          const headers = new Headers(options.headers);
+          headers.set('x-app-passcode', localStorage.getItem(STORAGE_KEYS.PASSCODE) || '');
+          return fetch(url, { ...options, headers });
+        }
+      }
     });
 
 
@@ -190,6 +199,7 @@
 
       // Load saved clients from Supabase
       useEffect(() => {
+        let superseded = false;
         const loadClients = async () => {
           try {
             const { data, error } = await supabase
@@ -210,17 +220,19 @@
               project: '' // Not stored in client table
             }));
 
-            setSavedClients(clients);
+            if (!superseded) setSavedClients(clients);
           } catch (e) {
             console.error('Error loading clients:', e);
-            setSavedClients([]);
+            if (!superseded) setSavedClients([]);
           }
         };
         loadClients();
-      }, []);
+        return () => { superseded = true; };
+      }, [passcode]);
 
       // Load invoice history from Supabase
       useEffect(() => {
+        let superseded = false;
         const loadInvoiceHistory = async () => {
           try {
             const { data, error } = await supabase
@@ -285,14 +297,15 @@
               paymentNotes: inv.payment_notes || ''
             }));
 
-            setInvoiceHistory(invoices);
+            if (!superseded) setInvoiceHistory(invoices);
           } catch (e) {
             console.error('Error loading invoice history:', e);
-            setInvoiceHistory([]);
+            if (!superseded) setInvoiceHistory([]);
           }
         };
         loadInvoiceHistory();
-      }, []);
+        return () => { superseded = true; };
+      }, [passcode]);
 
       // Select a saved client
       const selectClient = (clientId) => {
