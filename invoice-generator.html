@@ -28,11 +28,12 @@
     // Initialize Supabase client
     const supabaseUrl = 'http://127.0.0.1:8002';
     const supabaseAnonKey = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
-    // Browsers trim header values and reject non-Latin-1 ones, so trim here (the
-    // server trims too) and send nothing rather than throw on an unsendable value.
+    // Browsers trim header values and reject non-Latin-1 ones, and bytes above 0x7E
+    // can compare differently in Postgres and Node. Trim (the server trims too) and
+    // send only printable ASCII, rather than throw or send a value that never matches.
     const passcodeHeader = (value) => {
       const v = (value || '').trim();
-      return v && !/[^\x20-\xFF]/.test(v) ? v : null;
+      return v && !/[^\x20-\x7E]/.test(v) ? v : null;
     };
 
     // RLS admits a request only when x-app-passcode matches the stored hash (see
