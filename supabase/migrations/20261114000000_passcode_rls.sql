@@ -73,7 +73,17 @@ begin
       execute format('alter view public.%I set (security_invoker = true)', t);
     end if;
   end loop;
+
+  -- api_keys exists only in the local schema; if present, lock it entirely.
+  if to_regclass('public.api_keys') is not null then
+    for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'api_keys' loop
+      execute format('drop policy %I on public.api_keys', p.policyname);
+    end loop;
+    alter table public.api_keys enable row level security;
+    revoke all on public.api_keys from anon, authenticated;
+  end if;
 end $$;
 
--- After running: expect no rows (a public table with RLS off is open to the anon key).
+-- After running, expect no rows from either (RLS off, or an allow-all policy left):
 --   select tablename from pg_tables where schemaname = 'public' and not rowsecurity;
+--   select tablename, policyname from pg_policies where schemaname = 'public' and qual = 'true';
