@@ -11,6 +11,10 @@
 --   insert into private.app_passcode (hash) values ('<bcrypt hash of the trimmed passcode>')
 --   on conflict (id) do update set hash = excluded.hash;
 -- Locked out, or changing the passcode: re-run that upsert with the new hash.
+-- The hash must start $2a$: pgcrypto's crypt() never matches a $2b$ or $2y$ hash
+-- (python bcrypt, node, htpasswd), which locks everyone out with no error. Make it
+-- with extensions.crypt(pw, extensions.gen_salt('bf', 10)) in a Postgres you control.
+-- Keep the passcode printable ASCII: the page sends nothing else.
 
 create extension if not exists pgcrypto with schema extensions;
 
