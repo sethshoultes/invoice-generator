@@ -57,9 +57,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server is not configured (missing ANTHROPIC_API_KEY or APP_PASSCODE).' });
   }
 
-  const { passcode, base64Data, mediaType } = req.body || {};
+  // Same header and trimming as the Supabase calls (browsers trim header values).
+  const passcode = String(req.headers['x-app-passcode'] || '').trim();
+  const { base64Data, mediaType } = req.body || {};
 
-  if (!passcode || !passcodeMatches(passcode, expectedPasscode)) {
+  if (!passcode || !passcodeMatches(passcode, expectedPasscode.trim())) {
     return res.status(401).json({ error: 'Invalid passcode.' });
   }
   if (!base64Data || !mediaType) {
