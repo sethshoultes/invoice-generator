@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Export localStorage Data</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .box {
+            border: 2px solid #3b82f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        pre {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            max-height: 400px;
+        }
+        .success {
+            color: #059669;
+            font-weight: 600;
+        }
+        .info {
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📦 Export localStorage Data</h1>
+
+    <div class="box">
+        <h2>Current Data Summary</h2>
+        <p id="summary" class="info">Loading...</p>
+    </div>
+
+    <div class="box">
+        <h2>Export Options</h2>
+        <button onclick="exportData()">💾 Download Backup JSON</button>
+        <button onclick="showData()" style="background: #6b7280; margin-left: 10px;">👁️ View Data</button>
+    </div>
+
+    <div id="output" style="display: none;">
+        <div class="box">
+            <h2>Data Preview</h2>
+            <pre id="dataPreview"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Get all localStorage data
+        function getAllData() {
+            const data = {
+                exportVersion: 1,
+                exportDate: new Date().toISOString(),
+                appVersion: "1.0.0-localStorage",
+                data: {
+                    apiKey: localStorage.getItem('anthropic_api_key') || null,
+                    clients: JSON.parse(localStorage.getItem('saved_clients') || '[]'),
+                    invoices: JSON.parse(localStorage.getItem('invoice_history') || '[]'),
+                    recurringItems: JSON.parse(localStorage.getItem('recurring_items') || '[]'),
+                    settings: {}
+                }
+            };
+            return data;
+        }
+
+        // Show summary
+        function updateSummary() {
+            const data = getAllData();
+            const summary = `
+                API Key: ${data.data.apiKey ? '✓ Saved' : '✗ Not set'}<br>
+                Clients: ${data.data.clients.length}<br>
+                Invoices: ${data.data.invoices.length}<br>
+                Recurring Items: ${data.data.recurringItems.length}
+            `;
+            document.getElementById('summary').innerHTML = summary;
+        }
+
+        // Export to JSON file
+        function exportData() {
+            const data = getAllData();
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `invoice-data-backup-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert('✅ Backup downloaded successfully!\n\nFile saved as: invoice-data-backup-' + Date.now() + '.json');
+        }
+
+        // Show data in preview
+        function showData() {
+            const data = getAllData();
+            const output = document.getElementById('output');
+            const preview = document.getElementById('dataPreview');
+
+            // Obfuscate API key in preview
+            const displayData = { ...data };
+            if (displayData.data.apiKey) {
+                displayData.data.apiKey = '***OBFUSCATED***';
+            }
+
+            preview.textContent = JSON.stringify(displayData, null, 2);
+            output.style.display = 'block';
+        }
+
+        // Initialize
+        updateSummary();
+    </script>
+</body>
+</html>

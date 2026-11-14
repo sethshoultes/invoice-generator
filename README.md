@@ -100,6 +100,49 @@ const [invoiceData, setInvoiceData] = useState({
 });
 ```
 
+## Deployment Options
+
+### Option A: Local (Docker + Supabase)
+
+Open `invoice-generator.html` directly in a browser. Uses the local Supabase instance at `http://127.0.0.1:8002`. Requires Docker Compose running the full Supabase stack.
+
+### Option B: Vercel + Supabase Cloud
+
+Deploy as a static site to Vercel with Supabase Cloud for the database.
+
+**1. Create Supabase Cloud project:**
+- Go to https://supabase.com/dashboard and create a new project
+- Note the project URL (`https://xxxx.supabase.co`) and anon key
+- Open the SQL Editor and run the contents of `supabase/init-cloud.sql`
+
+**2. Deploy to Vercel:**
+```bash
+# Install Vercel CLI if needed
+npm i -g vercel
+
+# Connect repo and deploy
+vercel --yes
+
+# Set environment variables
+vercel env add SUPABASE_URL production
+# Enter your Supabase project URL (e.g., https://xxxx.supabase.co)
+
+vercel env add SUPABASE_ANON_KEY production
+# Enter your Supabase anon key
+
+# Deploy to production
+vercel --prod
+```
+
+**3. Verify:**
+- Open the Vercel URL
+- Enter your Anthropic API key
+- Create a client, save an invoice, upload a statement, download PDF
+- Reload — verify data persists from Supabase Cloud
+
+**Migrating existing data:**
+Use the app's "Export All Data" button on local, then "Import Data" on the Vercel version.
+
 ## Requirements
 
 - Modern browser (Chrome, Firefox, Safari, Edge)
