@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
 -- ============================================
 
 -- Invoice Summary View
-CREATE OR REPLACE VIEW public.invoice_summary AS
+CREATE OR REPLACE VIEW public.invoice_summary WITH (security_invoker = true) AS
 SELECT
     i.id,
     i.invoice_number,
@@ -155,7 +155,7 @@ GROUP BY i.id, c.id
 ORDER BY i.submitted_date DESC;
 
 -- Client Invoice History
-CREATE OR REPLACE VIEW public.client_invoice_history AS
+CREATE OR REPLACE VIEW public.client_invoice_history WITH (security_invoker = true) AS
 SELECT
     c.id as client_id,
     c.name as client_name,

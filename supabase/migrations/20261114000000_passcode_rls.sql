@@ -52,6 +52,13 @@ begin
       'using ((select private.passcode_ok())) with check ((select private.passcode_ok()))', t);
   end loop;
 
+  -- A view runs as its owner and so skips RLS (invoice_summary and
+  -- client_invoice_history read every row with the anon key alone). Make every
+  -- public view run as the caller, so the policies above apply through it.
+  for p in select viewname from pg_views where schemaname = 'public' loop
+    execute format('alter view public.%I set (security_invoker = true)', p.viewname);
+  end loop;
+
   -- api_keys exists only in the local schema; if present, lock it with no policy at all.
   if to_regclass('public.api_keys') is not null then
     for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'api_keys' loop
